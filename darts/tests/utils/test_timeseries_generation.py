@@ -589,10 +589,11 @@ class TestTimeSeriesGeneration:
         vals_exp = np.concatenate([regular_year_oh, leap_year_oh])
         self.helper_routine(index_long, "day_of_year", vals_exp=vals_exp, one_hot=True)
 
-    @pytest.mark.parametrize("year", [1998, 2020])
+    @pytest.mark.parametrize("year", [1998, 2004, 2020])
     def test_datetime_attribute_timeseries_special_years(self, year):
         """Check that years with 53 weeks are is properly handled:
         - 1998 is a regular year starting on a thursday
+        - 2004 is a leap year starting on a thursday
         - 2020 is a leap year starting on a wednesday
         """
 
@@ -633,6 +634,23 @@ class TestTimeSeriesGeneration:
         self.helper_routine(
             index_weeks_ext, "week_of_year", vals_exp=vals_exp, one_hot=True
         )
+
+    @pytest.mark.parametrize(
+        "start,end",
+        [
+            # the first days of 2021 belong to the 53rd week of 2020
+            ("2021-01-01", "2021-12-31"),
+            # less than a year, but covers all 53 weeks of 2020
+            ("2020-01-05", "2020-12-28"),
+        ],
+    )
+    def test_datetime_attribute_timeseries_week_53(self, start, end):
+        """Check that the 53rd week is one hot encoded whenever it is in the index."""
+        index = pd.date_range(start=start, end=end, freq="D")
+        weeks = index.isocalendar().week.values
+        assert weeks.max() == 53
+        vals_exp = np.eye(53)[weeks - 1]
+        self.helper_routine(index, "week_of_year", vals_exp=vals_exp, one_hot=True)
 
     @pytest.mark.parametrize("is_dt", [True, False])
     def test_build_forecast_series_from_schema(self, is_dt):
